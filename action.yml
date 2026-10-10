@@ -1,0 +1,12 @@
+name: websocket
+description: Exchange messages with a WebSocket server
+guard: [read-only, allow-host]
+params: [url, headers, subprotocols, messages, timeout]
+runs:
+  using: binary
+  url: https://github.com/mozership/probe-websocket/releases/download/v0.1.0/probe-websocket_{os}_{arch}
+  checksums:
+    darwin_amd64: "6a27b47bb70c5dc774bf5870ee2e9749db1620e7246bdc2a904244bfa99d3eb6"
+    darwin_arm64: "8b24b7b740b5f299434012ee864d4072a4f5677d9290de915489677c7a627015"
+    linux_amd64: "e3544f4bf32d4e3266f1132c72d9a73b7e722805557a398d58edab96511daf16"
+    linux_arm64: "e0ccd82d46e287dbf7be627af1251d9da253ee8ae1ca2085a9fbc92ff73ab919"
