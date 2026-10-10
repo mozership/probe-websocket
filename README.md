@@ -99,7 +99,7 @@ A refused step fails with the kind `refused`.
 
 ## Releasing
 
-Pushing a `v*` tag builds the executables with GoReleaser and publishes them on the release. The workflow then commits an `action.yml` with their URLs and SHA-256 digests to `main`, and adds the commit to the release notes. That commit is the one to pin: Probe reads `action.yml` at the pinned commit and refuses an executable whose digest differs.
+Pushing a `v*` tag builds the executables with GoReleaser and publishes them on the release. The workflow then has `probe manifest` write an `action.yml` with their URLs and SHA-256 digests, commits it to `main`, and adds the commit to the release notes. The name, the description, `guard` and `params` are those of the `action.yml` at the tag, so that file is where to change them. That commit is the one to pin: Probe reads `action.yml` at the pinned commit and refuses an executable whose digest differs.
 
 ## License
 
