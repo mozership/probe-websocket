@@ -535,19 +535,22 @@ func TestCheckHostDefaultPorts(t *testing.T) {
 	}
 }
 
-// TestManifestDeclares checks that action.yml declares the params and the
-// guard the action has, so that probe check and the guard of a run take it
-// as it is. probe manifest keeps what it declares in the one of a release.
-func TestManifestDeclares(t *testing.T) {
-	data, err := os.ReadFile("action.yml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := actionref.ParseManifest(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !slices.Equal(m.Params, params) || !slices.Equal(m.Guard, keeps) {
-		t.Errorf("action.yml declares params %v and guard %v, want %v and %v", m.Params, m.Guard, params, keeps)
+// TestManifestsDeclare checks that action.yml, and the one the e2e workflows
+// run the action by, declare the params and the guard the action has, so
+// that probe check and the guard of a run take it as it is. probe manifest
+// keeps what action.yml declares in the one of a release.
+func TestManifestsDeclare(t *testing.T) {
+	for _, name := range []string{"action.yml", "e2e/action/action.yml"} {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m, err := actionref.ParseManifest(data)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !slices.Equal(m.Params, params) || !slices.Equal(m.Guard, keeps) {
+			t.Errorf("%s declares params %v and guard %v, want %v and %v", name, m.Params, m.Guard, params, keeps)
+		}
 	}
 }

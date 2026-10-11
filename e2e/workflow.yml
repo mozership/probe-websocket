@@ -1,0 +1,190 @@
+# The end-to-end tests: probe-websocket run through Probe against a WebSocket
+# server. Run it from the repository root, with the server of e2e/server
+# listening and the action built first, as Probe resolves it before the first
+# job:
+#
+#   go -C e2e/server run . &
+#   go build -o e2e/action/probe-websocket . && probe e2e/workflow.yml
+#
+# WEBSOCKET_URL names the server when it listens elsewhere than on
+# 127.0.0.1:18082.
+name: probe-websocket against a server
+
+# The action as it was just built, by the name a workflow would give a
+# released one.
+actions:
+  websocket: ./action
+
+vars:
+  base: "{{WEBSOCKET_URL ?? 'ws://localhost:18082'}}"
+
+jobs:
+- name: Messages sent and received
+  id: messages
+  steps:
+  - name: Wait for the server, with a step that connects and closes
+    uses: websocket
+    with:
+      url: "{{vars.base}}/echo"
+    retry: {max_attempts: 30, interval: 1s}
+    test: |
+      status == 0 && res.code == 101 && res.status == "101 Switching Protocols" &&
+      res.headers.Upgrade == "websocket" &&
+      len(res.messages) == 0 && res.close == nil && res.error == "" && res.subprotocol == ""
+
+  - name: A string is sent as it is, and anything else as JSON
+    uses: websocket
+    with:
+      url: "{{vars.base}}/echo"
+      messages:
+      - send: hello world
+      - receive:
+      - send: {type: order, items: [1, 2], paid: true}
+      - receive:
+    test: |
+      status == 0 && len(res.messages) == 2 &&
+      res.messages[0].type == "text" && res.messages[0].data == "hello world" &&
+      res.messages[0].raw == "hello world" &&
+      res.messages[1].data.type == "order" && res.messages[1].data.items == [1, 2] &&
+      res.messages[1].data.paid == true && res.messages[1].raw contains "\"items\":[1,2]"
+
+  - name: A binary message comes back as base64
+    uses: websocket
+    with:
+      url: "{{vars.base}}/echo"
+      messages:
+      - send_binary: AAEC/w==
+      - receive:
+    test: |
+      status == 0 && res.messages[0].type == "binary" &&
+      res.messages[0].data == "AAEC/w==" && res.messages[0].raw == "AAEC/w=="
+
+  - name: The headers of the step are sent, and the server chooses a subprotocol
+    uses: websocket
+    with:
+      url: "{{vars.base}}/ticker"
+      headers:
+        Authorization: Bearer ada
+      subprotocols: [ticker.v9, ticker.v1]
+      messages:
+      - receive:
+    test: |
+      status == 0 && res.subprotocol == "ticker.v1" &&
+      res.messages[0].data == {"type": "hello", "user": "ada"}
+
+  # The server greets before it answers, so the first receive skips the
+  # greeting, and the second takes three of the updates that follow.
+  - name: A subscription, and the updates that match
+    uses: websocket
+    with:
+      url: "{{vars.base}}/ticker"
+      headers:
+        Authorization: Bearer ada
+      messages:
+      - send: {type: subscribe, channel: probe}
+      - receive:
+          match: {type: subscribed}
+      - receive:
+          count: 3
+          match: {type: update, channel: probe}
+    test: |
+      status == 0 && res.close == nil && len(res.messages) == 4 &&
+      res.messages[0].data.channel == "probe" &&
+      map(res.messages[1:], #.data.seq) == [1, 2, 3] &&
+      res.messages[3].data.price > 100
+
+  - name: A match of a value that comes later skips what comes before
+    uses: websocket
+    with:
+      url: "{{vars.base}}/ticker"
+      headers:
+        Authorization: Bearer ada
+      messages:
+      - send: {type: subscribe, channel: probe}
+      - receive:
+          match: {seq: 5}
+    test: status == 0 && len(res.messages) == 1 && res.messages[0].data.price == 105
+
+  - name: Every message until the server closes
+    uses: websocket
+    with:
+      url: "{{vars.base}}/countdown?from=3"
+      messages:
+      - receive:
+          until_close: true
+    test: |
+      status == 0 && res.error == "" &&
+      map(res.messages, #.data) == [3, 2, 1] && map(res.messages, #.raw) == ["3", "2", "1"] &&
+      res.close.code == 1000 && res.close.reason == "liftoff"
+
+  - name: A close the server sends in answer to a message
+    uses: websocket
+    with:
+      url: "{{vars.base}}/ticker"
+      headers:
+        Authorization: Bearer ada
+      messages:
+      - receive:
+      - send: {type: bye}
+      - receive:
+          until_close: true
+    test: |
+      status == 0 && len(res.messages) == 1 &&
+      res.close.code == 1000 && res.close.reason == "bye"
+
+  - name: A redirect of the handshake is followed
+    uses: websocket
+    with:
+      url: "{{vars.base}}/moved"
+      messages:
+      - send: after the redirect
+      - receive:
+    test: status == 0 && res.code == 101 && res.messages[0].data == "after the redirect"
+
+- name: Exchanges that do not run to the end
+  needs: [messages]
+  steps:
+  - name: A handshake the server refuses
+    uses: websocket
+    with:
+      url: "{{vars.base}}/ticker"
+      messages:
+      - receive:
+    test: |
+      status == 1 && res.code == 401 && res.status == "401 Unauthorized" &&
+      res.headers["Www-Authenticate"] == "Bearer" &&
+      res.error != "" && len(res.messages) == 0
+
+  - name: A close before the messages asked for
+    uses: websocket
+    with:
+      url: "{{vars.base}}/countdown?from=1&code=4001&reason=over"
+      messages:
+      - receive:
+          count: 3
+    test: |
+      status == 1 && len(res.messages) == 1 &&
+      res.error == "messages[0] took 1 of 3 messages: the server closed the connection with 4001" &&
+      res.close.code == 4001 && res.close.reason == "over"
+
+  - name: A message that is not sent, as the server has closed
+    uses: websocket
+    with:
+      url: "{{vars.base}}/countdown?from=0"
+      messages:
+      - receive:
+      - send: too late
+    test: |
+      status == 1 && len(res.messages) == 0 && res.close.code == 1000 &&
+      res.error == "messages[0] took 0 of 1 message: the server closed the connection with 1000"
+
+  - name: A message that never comes
+    uses: websocket
+    with:
+      url: "{{vars.base}}/silent"
+      timeout: 1s
+      messages:
+      - receive:
+    test: |
+      status == 1 && res.code == 101 && res.close == nil &&
+      res.error == "messages[0] took 0 of 1 message: timed out after 1s"
