@@ -6,11 +6,13 @@ Probe downloads it the first time a workflow uses it. It needs Probe v1.17.0 or 
 
 ```yaml
 name: Ticker
+actions:
+  websocket: github.com/mozership/probe-websocket@<commit SHA>
 jobs:
 - name: ticker
   steps:
   - name: Subscribe and get an update
-    uses: github.com/mozership/probe-websocket@<commit SHA>
+    uses: websocket
     with:
       url: wss://example.com/ws
       headers:
@@ -25,7 +27,9 @@ jobs:
     test: res.code == 101 && len(res.messages) == 4 && res.messages[3].data.price > 0
 ```
 
-Probe only takes a full 40-character commit SHA. The notes of each [release](https://github.com/mozership/probe-websocket/releases) start with the `uses` line to copy.
+The workflow gives the action a name once, under `actions`, and its steps use the name. Probe only takes a full 40-character commit SHA there. The notes of each [release](https://github.com/mozership/probe-websocket/releases) start with the action and its commit to copy.
+
+`actions` needs Probe v1.24.0 or later. With an earlier one, write the action in full in each `uses`, as `uses: github.com/mozership/probe-websocket@<commit SHA>`.
 
 Every step opens a new connection, runs its `messages` in order, and closes it, so a subscription does not carry over to the next step: put a whole exchange in one step.
 
