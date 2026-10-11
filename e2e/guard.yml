@@ -1,0 +1,42 @@
+# What probe-websocket does under a guard. Its last step sends a message, so
+# a run under --read-only ends there with exit status 2, and under an
+# --allow-host that does not name the server every step is refused:
+#
+#   probe --read-only --allow-host localhost e2e/guard.yml
+#   probe --allow-host ws.example.com e2e/guard.yml
+name: probe-websocket under a guard
+
+actions:
+  websocket: ./action
+
+vars:
+  base: "{{WEBSOCKET_URL ?? 'ws://localhost:18082'}}"
+
+jobs:
+- name: A step that receives and a step that sends
+  steps:
+  - name: A step that receives is run
+    uses: websocket
+    with:
+      url: "{{vars.base}}/ticker"
+      headers:
+        Authorization: Bearer ada
+      messages:
+      - receive:
+          match: {type: hello}
+    test: status == 0 && res.messages[0].data.user == "ada"
+
+  - name: A redirect to a host the run allows is followed
+    uses: websocket
+    with:
+      url: "{{vars.base}}/moved"
+    test: status == 0 && res.code == 101
+
+  - name: A step that sends is refused
+    uses: websocket
+    with:
+      url: "{{vars.base}}/echo"
+      messages:
+      - send: hello
+      - receive:
+    test: status == 0

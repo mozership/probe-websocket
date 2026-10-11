@@ -6,8 +6,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -537,23 +535,22 @@ func TestCheckHostDefaultPorts(t *testing.T) {
 	}
 }
 
-// TestManifestDeclares checks that the action.yml a release writes declares
-// the params and the guard the action has, so that probe check and the
-// guard of a run take it as it is.
-func TestManifestDeclares(t *testing.T) {
-	checksums := filepath.Join(t.TempDir(), "checksums.txt")
-	if err := os.WriteFile(checksums, []byte(strings.Repeat("a", 64)+"  probe-websocket_linux_amd64\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	out, err := exec.Command("sh", "scripts/action-yml.sh", "v0.0.0", checksums).Output()
-	if err != nil {
-		t.Fatalf("scripts/action-yml.sh: %v", err)
-	}
-	m, err := actionref.ParseManifest(out)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !slices.Equal(m.Params, params) || !slices.Equal(m.Guard, keeps) {
-		t.Errorf("action.yml declares params %v and guard %v, want %v and %v", m.Params, m.Guard, params, keeps)
+// TestManifestsDeclare checks that action.yml, and the one the e2e workflows
+// run the action by, declare the params and the guard the action has, so
+// that probe check and the guard of a run take it as it is. probe manifest
+// keeps what action.yml declares in the one of a release.
+func TestManifestsDeclare(t *testing.T) {
+	for _, name := range []string{"action.yml", "e2e/action/action.yml"} {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m, err := actionref.ParseManifest(data)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !slices.Equal(m.Params, params) || !slices.Equal(m.Guard, keeps) {
+			t.Errorf("%s declares params %v and guard %v, want %v and %v", name, m.Params, m.Guard, params, keeps)
+		}
 	}
 }

@@ -1,0 +1,12 @@
+# probe-websocket built from this checkout, for the workflows of e2e. Probe
+# resolves an action before the first job starts, so the executable is built
+# before probe runs:
+#
+#   go build -o e2e/action/probe-websocket . && probe e2e/workflow.yml
+name: websocket
+description: Exchange messages with a WebSocket server
+guard: [read-only, allow-host]
+params: [url, headers, subprotocols, messages, timeout]
+runs:
+  using: binary
+  path: probe-websocket

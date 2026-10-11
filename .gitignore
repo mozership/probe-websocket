@@ -1,2 +1,4 @@
 /probe-websocket
 /dist/
+/e2e/action/probe-websocket
+/e2e/server/server
