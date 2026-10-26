@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/linyows/probe/actionref"
-	"github.com/linyows/probe/actionrpc"
+	"github.com/mozership/probe/actionref"
+	"github.com/mozership/probe/actionrpc"
 )
 
 // server upgrades every request and hands the connection to handle, then

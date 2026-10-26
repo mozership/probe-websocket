@@ -17,7 +17,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/hashicorp/go-hclog"
-	"github.com/linyows/probe/actionrpc"
+	"github.com/mozership/probe/actionrpc"
 )
 
 // DefaultTimeout bounds a step that does not set with.timeout.

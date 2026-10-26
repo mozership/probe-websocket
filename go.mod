@@ -5,7 +5,7 @@ go 1.27.1
 require (
 	github.com/coder/websocket v1.8.15
 	github.com/hashicorp/go-hclog v1.6.3
-	github.com/linyows/probe v1.22.0
+	github.com/mozership/probe v1.30.0
 )
 
 require (
