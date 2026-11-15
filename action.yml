@@ -4,9 +4,9 @@ guard: [read-only, allow-host]
 params: [url, headers, subprotocols, messages, timeout]
 runs:
   using: binary
-  url: https://github.com/mozership/probe-websocket/releases/download/v0.1.0/probe-websocket_{os}_{arch}
+  url: https://github.com/mozership/probe-websocket/releases/download/v0.1.1/probe-websocket_{os}_{arch}
   checksums:
-    darwin_amd64: "6a27b47bb70c5dc774bf5870ee2e9749db1620e7246bdc2a904244bfa99d3eb6"
-    darwin_arm64: "8b24b7b740b5f299434012ee864d4072a4f5677d9290de915489677c7a627015"
-    linux_amd64: "e3544f4bf32d4e3266f1132c72d9a73b7e722805557a398d58edab96511daf16"
-    linux_arm64: "e0ccd82d46e287dbf7be627af1251d9da253ee8ae1ca2085a9fbc92ff73ab919"
+    darwin_amd64: "e2a99605f36eec129cf158bcaf4fb91bdbec36122edb5fe0713c74abba7afdf1"
+    darwin_arm64: "22e6463ee3d055f82668e6d3efac07bfdf5d4c97af60c4f7bd95edd19f03d7bd"
+    linux_amd64: "78fb3f056d4f85d66235da43e1a5e8f91b087df48a4092426eeb150933227ef0"
+    linux_arm64: "0475858d24147d761afea215a3ae6b598758974e88ffe87de0286c49c4b8f592"
