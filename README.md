@@ -2,7 +2,7 @@
 
 A [Probe](https://github.com/mozership/probe) action that exchanges messages with a WebSocket server.
 
-Probe downloads it the first time a workflow uses it. It needs Probe v1.17.0 or later, and v1.21.0 or later to run under a guard, which reads the guard and the params the action declares in `action.yml`.
+It is an [external action](https://probe.linyo.ws/guide/concepts/actions#external-actions): Probe downloads it the first time a workflow uses it, and runs the executable whose SHA-256 the `action.yml` at the pinned commit names. It needs Probe v1.17.0 or later, and v1.21.0 or later to run under a guard, which reads the guard and the params the action declares in `action.yml`.
 
 ```yaml
 name: Ticker
@@ -92,6 +92,18 @@ Once the server answers the handshake, what happens is a result, so a test can a
 
 When every entry is done and the server has not closed the connection, the action closes it with `1000`. A message larger than 16 MiB ends the exchange.
 
+```yaml
+  - name: The feed sends two updates, then closes
+    uses: websocket
+    with:
+      url: wss://example.com/replay
+      messages:
+      - receive:
+          until_close: true
+          match: {type: update}
+    test: len(res.messages) == 2 && res.close.code == 1000
+```
+
 ## Guard
 
 The action keeps to the guard of the run, and its `action.yml` declares `guard: [read-only, allow-host]`, so Probe runs it under `--read-only` and `--allow-host` without `--allow-action`.
@@ -99,7 +111,7 @@ The action keeps to the guard of the run, and its `action.yml` declares `guard: 
 - Under `--read-only`, only a step that receives is run. What a message does on the server cannot be told, so a step with a `send` or a `send_binary` entry is refused before connecting. A server that needs a message before it sends anything, such as a subscribe, has to be allowed with `--allow-action`.
 - Under `--allow-host`, the host of `url`, and of each redirect of the handshake, must be one the run allows. A URL without a port is taken at the port of its scheme: `80` for `ws` and `443` for `wss`.
 
-A refused step fails with the kind `refused`.
+A refused step fails with the kind `refused`. See [Guard](https://probe.linyo.ws/guide/concepts/guard).
 
 ## Testing
 
