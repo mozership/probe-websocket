@@ -471,8 +471,7 @@ func want(x exchange) string {
 // failure tells why a read or a write failed: the close the server
 // sent, if it closed the connection, and a description.
 func failure(ctx context.Context, err error, timeout time.Duration) (map[string]any, string) {
-	var ce websocket.CloseError
-	if errors.As(err, &ce) {
+	if ce, ok := errors.AsType[websocket.CloseError](err); ok {
 		return map[string]any{"code": int(ce.Code), "reason": ce.Reason}, fmt.Sprintf("the server closed the connection with %d", int(ce.Code))
 	}
 	if ctx.Err() != nil {
