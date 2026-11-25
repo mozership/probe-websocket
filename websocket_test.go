@@ -14,8 +14,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/mozership/probe/actionref"
-	"github.com/mozership/probe/actionrpc"
+	"github.com/mozership/probe/sdk"
 )
 
 // server upgrades every request and hands the connection to handle, then
@@ -145,7 +144,7 @@ func TestRun(t *testing.T) {
 	}
 
 	// What the step sees crosses the plugin boundary.
-	if _, err := actionrpc.Sendable(ret); err != nil {
+	if _, err := sdk.Sendable(ret); err != nil {
 		t.Errorf("Sendable() error = %v", err)
 	}
 }
@@ -160,7 +159,7 @@ func TestRunConnectOnly(t *testing.T) {
 	if ret["status"] != 0 || r["code"] != 101 || len(r["messages"].([]any)) != 0 {
 		t.Errorf("ret = %v", ret)
 	}
-	if _, err := actionrpc.Sendable(ret); err != nil {
+	if _, err := sdk.Sendable(ret); err != nil {
 		t.Errorf("Sendable() error = %v", err)
 	}
 }
@@ -339,7 +338,7 @@ func TestRunHandshakeRefused(t *testing.T) {
 	if h, _ := r["headers"].(map[string]any); h["Www-Authenticate"] != "Bearer" {
 		t.Errorf("headers = %v", r["headers"])
 	}
-	if _, err := actionrpc.Sendable(ret); err != nil {
+	if _, err := sdk.Sendable(ret); err != nil {
 		t.Errorf("Sendable() error = %v", err)
 	}
 }
@@ -462,10 +461,10 @@ func TestParseTimeout(t *testing.T) {
 func TestRunStepReadOnly(t *testing.T) {
 	u, rec := server(t, feed(websocket.StatusNormalClosure, "news"))
 	host := strings.TrimPrefix(u, "ws://")
-	guard := actionrpc.Guard{ReadOnly: true, AllowHosts: []string{host}}
+	guard := sdk.Guard{ReadOnly: true, AllowHosts: []string{host}}
 
 	// A step that only receives is run.
-	ret, _, err := (&Action{}).RunStep(actionrpc.Call{
+	ret, _, err := (&Action{}).RunStep(sdk.Call{
 		With:  map[string]any{"url": u, "messages": []any{map[string]any{"receive": map[string]any{"until_close": true}}}},
 		Guard: guard,
 	})
@@ -474,14 +473,14 @@ func TestRunStepReadOnly(t *testing.T) {
 	}
 
 	for _, kind := range []string{"send", "send_binary"} {
-		_, _, err := (&Action{}).RunStep(actionrpc.Call{
+		_, _, err := (&Action{}).RunStep(sdk.Call{
 			With: map[string]any{"url": u, "messages": []any{
 				map[string]any{"receive": nil},
 				map[string]any{kind: "AAAA"},
 			}},
 			Guard: guard,
 		})
-		if !actionrpc.IsRefused(err) || !strings.Contains(err.Error(), "messages[1] sends to the server") {
+		if !sdk.IsRefused(err) || !strings.Contains(err.Error(), "messages[1] sends to the server") {
 			t.Errorf("RunStep() with %s error = %v, want a refusal", kind, err)
 		}
 	}
@@ -495,13 +494,13 @@ func TestRunStepAllowHost(t *testing.T) {
 	pu, _ := url.Parse(u)
 	with := map[string]any{"url": u}
 
-	_, _, err := (&Action{}).RunStep(actionrpc.Call{With: with, Guard: actionrpc.Guard{AllowHosts: []string{"api.example.com"}}})
-	if !actionrpc.IsRefused(err) || rec.header != nil {
+	_, _, err := (&Action{}).RunStep(sdk.Call{With: with, Guard: sdk.Guard{AllowHosts: []string{"api.example.com"}}})
+	if !sdk.IsRefused(err) || rec.header != nil {
 		t.Errorf("RunStep() error = %v, connected = %v; want a refusal before connecting", err, rec.header != nil)
 	}
 
 	// A host without a port is any port of it.
-	if _, _, err := (&Action{}).RunStep(actionrpc.Call{With: with, Guard: actionrpc.Guard{AllowHosts: []string{pu.Hostname()}}}); err != nil {
+	if _, _, err := (&Action{}).RunStep(sdk.Call{With: with, Guard: sdk.Guard{AllowHosts: []string{pu.Hostname()}}}); err != nil {
 		t.Errorf("RunStep() error = %v for an allowed host", err)
 	}
 
@@ -510,11 +509,11 @@ func TestRunStepAllowHost(t *testing.T) {
 	t.Cleanup(front.Close)
 	fu, _ := url.Parse(front.URL)
 	rec.header = nil
-	_, _, err = (&Action{}).RunStep(actionrpc.Call{
+	_, _, err = (&Action{}).RunStep(sdk.Call{
 		With:  map[string]any{"url": "ws://" + fu.Host},
-		Guard: actionrpc.Guard{AllowHosts: []string{fu.Host}},
+		Guard: sdk.Guard{AllowHosts: []string{fu.Host}},
 	})
-	if !actionrpc.IsRefused(err) || rec.header != nil {
+	if !sdk.IsRefused(err) || rec.header != nil {
 		t.Errorf("RunStep() error = %v, connected = %v; want the redirect refused", err, rec.header != nil)
 	}
 }
@@ -529,7 +528,7 @@ func TestCheckHostDefaultPorts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		u, _ := url.Parse(tt.url)
-		if err := checkHost(actionrpc.Guard{AllowHosts: []string{tt.allow}}, u); err != nil {
+		if err := checkHost(sdk.Guard{AllowHosts: []string{tt.allow}}, u); err != nil {
 			t.Errorf("checkHost(%s) under %s error = %v", tt.url, tt.allow, err)
 		}
 	}
@@ -545,7 +544,7 @@ func TestManifestsDeclare(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		m, err := actionref.ParseManifest(data)
+		m, err := sdk.ParseManifest(data)
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
